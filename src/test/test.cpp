@@ -13,6 +13,87 @@
 
 using namespace Numerical;
 
+TEST_CASE("Polynomial Integral", "[Polynomial]") {
+  constexpr const int dim = 3;
+  constexpr const int degree_range_1 = 2;
+  constexpr const int degree_range_2 = 3;
+  using CoeffT = double;
+  using P = Polynomial<CoeffT, degree_range_1, dim>;
+  using I = Polynomial<CoeffT, degree_range_2, dim>;
+
+  P x;
+  x.coeff(0, 0, 0) = 2.0;
+
+  x.coeff(0, 0, 1) = 3.0;
+  x.coeff(0, 1, 0) = 5.0;
+  x.coeff(1, 0, 0) = 7.0;
+
+  x.coeff(0, 0, 2) = 1.0;
+  x.coeff(0, 1, 1) = 0.0;
+  x.coeff(0, 2, 0) = 1.0;
+  x.coeff(1, 0, 1) = 0.0;
+  x.coeff(1, 1, 0) = 0.0;
+  x.coeff(2, 0, 0) = 1.0;
+
+  SECTION("x0") {
+    const CoeffT constant = 5.0;
+    I y = x.integrate(0, constant);
+
+    REQUIRE(y.coeff(0, 0, 0) == constant);
+
+    REQUIRE(y.coeff(0, 0, 1) == 0.0);
+    REQUIRE(y.coeff(0, 1, 0) == 0.0);
+    REQUIRE(y.coeff(1, 0, 0) == x.coeff(0, 0, 0));
+
+    REQUIRE(y.coeff(0, 0, 2) == 0.0);
+    REQUIRE(y.coeff(0, 1, 1) == 0.0);
+    REQUIRE(y.coeff(0, 2, 0) == 0.0);
+    REQUIRE(y.coeff(1, 0, 1) == x.coeff(0, 0, 1));
+    REQUIRE(y.coeff(1, 1, 0) == x.coeff(0, 1, 0));
+    REQUIRE(y.coeff(2, 0, 0) == 0.5 * x.coeff(1, 0, 0));
+
+    REQUIRE(y.coeff(0, 0, 3) == 0.0);
+    REQUIRE(y.coeff(0, 1, 2) == 0.0);
+    REQUIRE(y.coeff(0, 2, 1) == 0.0);
+    REQUIRE(y.coeff(0, 3, 0) == 0.0);
+    REQUIRE(y.coeff(1, 0, 2) == x.coeff(0, 0, 2));
+    REQUIRE(y.coeff(1, 1, 1) == x.coeff(0, 1, 1));
+    REQUIRE(y.coeff(1, 2, 0) == x.coeff(0, 2, 0));
+    REQUIRE(y.coeff(2, 0, 1) == 0.5 * x.coeff(1, 0, 1));
+    REQUIRE(y.coeff(2, 1, 0) == 0.5 * x.coeff(1, 1, 0));
+    REQUIRE(y.coeff(3, 0, 0) == x.coeff(2, 0, 0) / 3.0);
+  }
+
+  SECTION("x1") {
+    const CoeffT constant = 7.0;
+    I y = x.integrate(1, constant);
+
+    REQUIRE(y.coeff(0, 0, 0) == constant);
+
+    REQUIRE(y.coeff(0, 0, 1) == 0.0);
+    REQUIRE(y.coeff(0, 1, 0) == x.coeff(0, 0, 0));
+    REQUIRE(y.coeff(1, 0, 0) == 0.0);
+
+    REQUIRE(y.coeff(0, 0, 2) == 0.0);
+    REQUIRE(y.coeff(0, 1, 1) == x.coeff(0, 0, 1));
+    REQUIRE(y.coeff(0, 2, 0) == 0.5 * x.coeff(0, 1, 0));
+    REQUIRE(y.coeff(1, 0, 1) == 0.0);
+    REQUIRE(y.coeff(1, 1, 0) == x.coeff(1, 0, 0));
+    REQUIRE(y.coeff(2, 0, 0) == 0.0);
+
+    REQUIRE(y.coeff(0, 0, 3) == 0.0);
+    REQUIRE(y.coeff(0, 1, 2) == x.coeff(0, 0, 2));
+    REQUIRE(y.coeff(0, 2, 1) == 0.5 * x.coeff(0, 1, 1));
+    REQUIRE(y.coeff(0, 3, 0) == x.coeff(0, 2, 0) / 3.0);
+    REQUIRE(y.coeff(1, 0, 2) == 0.0);
+    REQUIRE(y.coeff(1, 1, 1) == x.coeff(1, 0, 1));
+    REQUIRE(y.coeff(1, 2, 0) == 0.5 * x.coeff(1, 1, 0));
+    REQUIRE(y.coeff(2, 0, 1) == 0.0);
+    REQUIRE(y.coeff(2, 1, 0) == x.coeff(2, 0, 0));
+    REQUIRE(y.coeff(3, 0, 0) == 0.0);
+  }
+}
+
 TEST_CASE("Polynomial Product", "[Polynomial]") {
   constexpr const int dim = 3;
   constexpr const int degree_range_1 = 2;

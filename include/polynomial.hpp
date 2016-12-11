@@ -126,6 +126,28 @@ class Polynomial {
     return prod;
   }
 
+  Polynomial<CoeffT, _degree_range + 1, _dim> integrate(
+      int variable, CoeffT constant = 0) const {
+    Polynomial<CoeffT, _degree_range + 1, _dim> integral(
+        (Zero_Tag()));
+    Array<int, _dim> buf;
+    coeff_iterator(
+        _degree_range, 0, buf,
+        [&](const Array<int, _dim> &exponents) {
+          Array<int, _dim> integral_eq(exponents);
+          integral_eq[variable]++;
+          CoeffT factor =
+              CoeffT(1) / CoeffT(integral_eq[variable]);
+          integral.coeff(integral_eq) =
+              factor * coeff(exponents);
+        });
+    for(int i = 0; i < _dim; i++) {
+      buf[i] = 0;
+    }
+    integral.coeff(buf) = constant;
+    return integral;
+  }
+
   template <
       typename... subs_list,
       typename std::enable_if<sizeof...(subs_list) == _dim,

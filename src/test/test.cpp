@@ -13,6 +13,86 @@
 
 using namespace Numerical;
 
+TEST_CASE("Polynomial Product", "[Polynomial]") {
+  constexpr const int dim = 3;
+  constexpr const int degree_range_1 = 2;
+  constexpr const int degree_range_2 = 2;
+  using CoeffT = double;
+  using P1 = Polynomial<CoeffT, degree_range_1, dim>;
+  using P2 = Polynomial<CoeffT, degree_range_2, dim>;
+  P1 x;
+  x.coeff(0, 0, 0) = 2.0;
+
+  x.coeff(0, 0, 1) = 3.0;
+  x.coeff(0, 1, 0) = 5.0;
+  x.coeff(1, 0, 0) = 7.0;
+
+  x.coeff(0, 0, 2) = 1.0;
+  x.coeff(0, 1, 1) = 0.0;
+  x.coeff(0, 2, 0) = 1.0;
+  x.coeff(1, 0, 1) = 0.0;
+  x.coeff(1, 1, 0) = 0.0;
+  x.coeff(2, 0, 0) = 1.0;
+
+  P2 y;
+  y.coeff(0, 0, 0) = 2.0;
+
+  y.coeff(0, 0, 1) = 3.0;
+  y.coeff(0, 1, 0) = 5.0;
+  y.coeff(1, 0, 0) = 7.0;
+
+  y.coeff(0, 0, 2) = 1.0;
+  y.coeff(0, 1, 1) = 0.0;
+  y.coeff(0, 2, 0) = 1.0;
+  y.coeff(1, 0, 1) = 0.0;
+  y.coeff(1, 1, 0) = 0.0;
+  y.coeff(2, 0, 0) = 1.0;
+
+  using PProd =
+      Polynomial<CoeffT, degree_range_1 + degree_range_2,
+                 dim>;
+  PProd p = x.product(y);
+  REQUIRE(p.coeff(0, 0, 0) == 4.0);
+
+  REQUIRE(p.coeff(0, 0, 1) == 12.0);
+  REQUIRE(p.coeff(0, 1, 0) == 20.0);
+  REQUIRE(p.coeff(1, 0, 0) == 28.0);
+
+  REQUIRE(p.coeff(0, 0, 2) == 13.0);
+  REQUIRE(p.coeff(0, 1, 1) == 30.0);
+  REQUIRE(p.coeff(0, 2, 0) == 29.0);
+  REQUIRE(p.coeff(1, 0, 1) == 42.0);
+  REQUIRE(p.coeff(1, 1, 0) == 70.0);
+  REQUIRE(p.coeff(2, 0, 0) == 53.0);
+
+  REQUIRE(p.coeff(0, 0, 3) == 6.0);
+  REQUIRE(p.coeff(0, 1, 2) == 10.0);
+  REQUIRE(p.coeff(0, 2, 1) == 6.0);
+  REQUIRE(p.coeff(0, 3, 0) == 10.0);
+  REQUIRE(p.coeff(1, 0, 2) == 14.0);
+  REQUIRE(p.coeff(1, 1, 1) == 0.0);
+  REQUIRE(p.coeff(1, 2, 0) == 14.0);
+  REQUIRE(p.coeff(2, 0, 1) == 6.0);
+  REQUIRE(p.coeff(2, 1, 0) == 10.0);
+  REQUIRE(p.coeff(3, 0, 0) == 14.0);
+
+  REQUIRE(p.coeff(0, 0, 4) == 1.0);
+  REQUIRE(p.coeff(0, 1, 3) == 0.0);
+  REQUIRE(p.coeff(0, 2, 2) == 2.0);
+  REQUIRE(p.coeff(0, 3, 1) == 0.0);
+  REQUIRE(p.coeff(0, 4, 0) == 1.0);
+  REQUIRE(p.coeff(1, 0, 3) == 0.0);
+  REQUIRE(p.coeff(1, 1, 2) == 0.0);
+  REQUIRE(p.coeff(1, 2, 1) == 0.0);
+  REQUIRE(p.coeff(1, 3, 0) == 0.0);
+  REQUIRE(p.coeff(2, 0, 2) == 2.0);
+  REQUIRE(p.coeff(2, 1, 1) == 0.0);
+  REQUIRE(p.coeff(2, 2, 0) == 2.0);
+  REQUIRE(p.coeff(3, 0, 1) == 0.0);
+  REQUIRE(p.coeff(3, 1, 0) == 00.0);
+  REQUIRE(p.coeff(4, 0, 0) == 1.0);
+}
+
 TEST_CASE("Polynomial Evaluation", "[Polynomial]") {
   constexpr const int degree_range = 2;
   constexpr const int dim = 3;
@@ -25,18 +105,18 @@ TEST_CASE("Polynomial Evaluation", "[Polynomial]") {
   p.coeff(0, 1, 0) = 5.0;
   p.coeff(1, 0, 0) = 7.0;
 
-  p.coeff(0, 0, 2) = 0.0;
+  p.coeff(0, 0, 2) = 1.0;
   p.coeff(0, 1, 1) = 0.0;
-  p.coeff(0, 2, 0) = 0.0;
+  p.coeff(0, 2, 0) = 1.0;
   p.coeff(1, 0, 1) = 0.0;
   p.coeff(1, 1, 0) = 0.0;
-  p.coeff(2, 0, 0) = 0.0;
+  p.coeff(2, 0, 0) = 1.0;
 
   REQUIRE(p.eval(0.0, 0.0, 0.0) == 2.0);
 
-  REQUIRE(p.eval(0.0, 0.0, 1.0) == 5.0);
-  REQUIRE(p.eval(0.0, 1.0, 0.0) == 7.0);
-  REQUIRE(p.eval(1.0, 0.0, 0.0) == 9.0);
+  REQUIRE(p.eval(0.0, 0.0, 1.0) == 6.0);
+  REQUIRE(p.eval(0.0, 1.0, 0.0) == 8.0);
+  REQUIRE(p.eval(1.0, 0.0, 0.0) == 10.0);
 }
 
 TEST_CASE("Coefficient Indices", "[Polynomial]") {

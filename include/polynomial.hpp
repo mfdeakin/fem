@@ -11,6 +11,10 @@
 
 namespace Numerical {
 
+namespace {
+struct Zero_Tag {};
+}
+
 template <typename CoeffT, int _degree_range, int _dim>
 class Polynomial {
  public:
@@ -22,6 +26,19 @@ class Polynomial {
     static_assert(_dim >= 0,
                   "A polynomial's _dimension must be at "
                   "least zero, otherwise it's degenerate");
+  }
+
+  Polynomial(const Zero_Tag &) : lower_degree(Zero_Tag()) {
+    static_assert(_degree_range >= 0,
+                  "A polynomial's _degree_range (max "
+                  "exponent-min exponent) must be at least "
+                  "zero, otherwise it's degenerate");
+    static_assert(_dim >= 0,
+                  "A polynomial's _dimension must be at "
+                  "least zero, otherwise it's degenerate");
+    for(int i = 0; i < num_coeffs; ++i) {
+      coeffs[i] = 0;
+    }
   }
 
   template <typename... int_list,
@@ -80,6 +97,35 @@ class Polynomial {
     }
   }
 
+  template <int other_degree_range>
+  Polynomial<CoeffT, _degree_range + other_degree_range,
+             _dim>
+  product(const Polynomial<CoeffT, other_degree_range, _dim>
+              &m) const {
+    using FP = Polynomial<
+        CoeffT, _degree_range + other_degree_range, _dim>;
+    FP prod((Zero_Tag()));
+    Array<int, _dim> buf;
+    coeff_iterator(
+        _degree_range, 0, buf,
+        [&](const Array<int, _dim> &exponents) {
+          Array<int, _dim> buf2;
+          m.coeff_iterator(
+              other_degree_range, 0, buf2,
+              [&](const Array<int, _dim> &other_exponents) {
+                Array<int, _dim> final_exponents;
+                for(int i = 0; i < _dim; i++) {
+                  final_exponents[i] =
+                      exponents[i] + other_exponents[i];
+                }
+                prod.coeff(final_exponents) +=
+                    coeff(exponents) *
+                    m.coeff(other_exponents);
+              });
+        });
+    return prod;
+  }
+
   template <
       typename... subs_list,
       typename std::enable_if<sizeof...(subs_list) == _dim,
@@ -93,6 +139,22 @@ class Polynomial {
   friend class Polynomial;
 
  private:
+  template <typename Lambda>
+  void coeff_iterator(const int exp_left, const int cur_dim,
+                      Array<int, _dim> &exponents,
+                      Lambda function) const {
+    for(exponents[cur_dim] = 0;
+        exponents[cur_dim] <= exp_left;
+        exponents[cur_dim]++) {
+      if(cur_dim == _dim - 1) {
+        function(exponents);
+      } else {
+        coeff_iterator(exp_left - exponents[cur_dim],
+                       cur_dim + 1, exponents, function);
+      }
+    }
+  }
+
   template <typename... subs_list>
   CoeffT eval_helper(int exp_left,
                      Array<int, _dim> &exponents,
@@ -204,6 +266,8 @@ class Polynomial<CoeffT, 0, _dim> {
  public:
   Polynomial() {}
 
+  Polynomial(const Zero_Tag &) : value(0) {}
+
   template <typename... int_list,
             typename std::enable_if<
                 sizeof...(int_list) == _dim, int>::type = 0>
@@ -269,6 +333,12 @@ template <typename CoeffT, int _degree_range>
 class Polynomial<CoeffT, _degree_range, 0> {
  public:
   Polynomial() {
+    static_assert(_degree_range == 0,
+                  "The degree range of a zero-d polynomial "
+                  "must be zero");
+  }
+
+  Polynomial(const Zero_Tag &) : value(0) {
     static_assert(_degree_range == 0,
                   "The degree range of a zero-d polynomial "
                   "must be zero");

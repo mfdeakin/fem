@@ -4,16 +4,13 @@
 
 #include "array.hpp"
 #include "ctmath.hpp"
+#include "tags.hpp"
 
 #include <iostream>
 
 #include <type_traits>
 
 namespace Numerical {
-
-namespace {
-struct Zero_Tag {};
-}
 
 template <typename CoeffT, int _degree_range, int _dim>
 class Polynomial {
@@ -28,7 +25,9 @@ class Polynomial {
                   "least zero, otherwise it's degenerate");
   }
 
-  Polynomial(const Zero_Tag &) : lower_degree(Zero_Tag()) {
+  Polynomial(const Tags::Zero_Tag &)
+      : lower_degree(Tags::Zero_Tag()),
+        coeffs(Tags::Zero_Tag()) {
     static_assert(_degree_range >= 0,
                   "A polynomial's _degree_range (max "
                   "exponent-min exponent) must be at least "
@@ -36,9 +35,6 @@ class Polynomial {
     static_assert(_dim >= 0,
                   "A polynomial's _dimension must be at "
                   "least zero, otherwise it's degenerate");
-    for(int i = 0; i < num_coeffs; ++i) {
-      coeffs[i] = 0;
-    }
   }
 
   template <typename... int_list,
@@ -104,7 +100,7 @@ class Polynomial {
               &m) const {
     using FP = Polynomial<
         CoeffT, _degree_range + other_degree_range, _dim>;
-    FP prod((Zero_Tag()));
+    FP prod((Tags::Zero_Tag()));
     coeff_iterator([&](const Array<int, _dim> &exponents) {
       m.coeff_iterator(
           [&](const Array<int, _dim> &other_exponents) {
@@ -123,7 +119,7 @@ class Polynomial {
   Polynomial<CoeffT, _degree_range + 1, _dim> integrate(
       int variable, CoeffT constant = 0) const {
     Polynomial<CoeffT, _degree_range + 1, _dim> integral(
-        (Zero_Tag()));
+        (Tags::Zero_Tag()));
     coeff_iterator([&](const Array<int, _dim> &exponents) {
       Array<int, _dim> integral_eq(exponents);
       integral_eq[variable]++;
@@ -143,7 +139,7 @@ class Polynomial {
   Polynomial<CoeffT, _degree_range - 1, _dim> differentiate(
       int variable) const {
     Polynomial<CoeffT, _degree_range - 1, _dim> derivative(
-        (Zero_Tag()));
+        (Tags::Zero_Tag()));
     coeff_iterator([&](const Array<int, _dim> &exponents) {
       Array<int, _dim> buf(exponents);
       if(buf[variable] > 0) {
@@ -301,7 +297,7 @@ class Polynomial<CoeffT, 0, _dim> {
  public:
   Polynomial() {}
 
-  Polynomial(const Zero_Tag &) : value(0) {}
+  Polynomial(const Tags::Zero_Tag &) : value(0) {}
 
   template <typename... int_list,
             typename std::enable_if<
@@ -333,7 +329,7 @@ class Polynomial<CoeffT, 0, _dim> {
 
   Polynomial<CoeffT, 1, _dim> integrate(
       int variable, const CoeffT &constant) const {
-    Polynomial<CoeffT, 1, _dim> p((Zero_Tag()));
+    Polynomial<CoeffT, 1, _dim> p((Tags::Zero_Tag()));
     Array<int, _dim> exp_spec;
     for(int i = 0; i < _dim; i++) {
       exp_spec[i] = 0;
@@ -342,6 +338,11 @@ class Polynomial<CoeffT, 0, _dim> {
     p.coeff(exp_spec) = constant;
     exp_spec[variable] = 1;
     p.coeff(exp_spec) = tmp;
+    return p;
+  }
+
+  Polynomial<CoeffT, 0, _dim) differentiate(int variable) const {
+    Polynomial<CoeffT, 0, _dim> p((Tags::Zero_Tag()));
     return p;
   }
 
@@ -387,7 +388,7 @@ class Polynomial<CoeffT, _degree_range, 0> {
                   "must be zero");
   }
 
-  Polynomial(const Zero_Tag &) : value(0) {
+  Polynomial(const Tags::Zero_Tag &) : value(0) {
     static_assert(_degree_range == 0,
                   "The degree range of a zero-d polynomial "
                   "must be zero");

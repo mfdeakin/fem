@@ -2,6 +2,8 @@
 #ifndef _ARRAY_HPP_
 #define _ARRAY_HPP_
 
+#include "tags.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <initializer_list>
@@ -14,12 +16,22 @@ struct Array {
 
   CUDA_CALLABLE Array() {}
 
+  CUDA_CALLABLE Array(const Tags::Zero_Tag &) {
+    for(int i = 0; i < sz; i++) {
+      data[i] = T(0);
+    }
+  }
+
   CUDA_CALLABLE Array(const Array<T, sz> &src) {
-    for(int i = 0; i < sz; i++) data[i] = src[i];
+    for(int i = 0; i < sz; i++) {
+      data[i] = src[i];
+    }
   }
 
   CUDA_CALLABLE Array(const T src[sz]) {
-    for(int i = 0; i < sz; i++) data[i] = src[i];
+    for(int i = 0; i < sz; i++) {
+      data[i] = src[i];
+    }
   }
 
   CUDA_CALLABLE Array(std::initializer_list<T> src) {
@@ -49,7 +61,9 @@ struct Array {
 
   CUDA_CALLABLE Array<T, sz> operator=(
       const Array<T, sz> &src) {
-    for(int i = 0; i < sz; i++) data[i] = src[i];
+    for(int i = 0; i < sz; i++) {
+      data[i] = src[i];
+    }
     return *this;
   }
 

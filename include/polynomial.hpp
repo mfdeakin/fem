@@ -105,24 +105,18 @@ class Polynomial {
     using FP = Polynomial<
         CoeffT, _degree_range + other_degree_range, _dim>;
     FP prod((Zero_Tag()));
-    Array<int, _dim> buf;
-    coeff_iterator(
-        _degree_range, 0, buf,
-        [&](const Array<int, _dim> &exponents) {
-          Array<int, _dim> buf2;
-          m.coeff_iterator(
-              other_degree_range, 0, buf2,
-              [&](const Array<int, _dim> &other_exponents) {
-                Array<int, _dim> final_exponents;
-                for(int i = 0; i < _dim; i++) {
-                  final_exponents[i] =
-                      exponents[i] + other_exponents[i];
-                }
-                prod.coeff(final_exponents) +=
-                    coeff(exponents) *
-                    m.coeff(other_exponents);
-              });
-        });
+    coeff_iterator([&](const Array<int, _dim> &exponents) {
+      m.coeff_iterator(
+          [&](const Array<int, _dim> &other_exponents) {
+            Array<int, _dim> final_exponents;
+            for(int i = 0; i < _dim; i++) {
+              final_exponents[i] =
+                  exponents[i] + other_exponents[i];
+            }
+            prod.coeff(final_exponents) +=
+                coeff(exponents) * m.coeff(other_exponents);
+          });
+    });
     return prod;
   }
 
@@ -130,22 +124,35 @@ class Polynomial {
       int variable, CoeffT constant = 0) const {
     Polynomial<CoeffT, _degree_range + 1, _dim> integral(
         (Zero_Tag()));
+    coeff_iterator([&](const Array<int, _dim> &exponents) {
+      Array<int, _dim> integral_eq(exponents);
+      integral_eq[variable]++;
+      CoeffT factor =
+          CoeffT(1) / CoeffT(integral_eq[variable]);
+      integral.coeff(integral_eq) =
+          factor * coeff(exponents);
+    });
     Array<int, _dim> buf;
-    coeff_iterator(
-        _degree_range, 0, buf,
-        [&](const Array<int, _dim> &exponents) {
-          Array<int, _dim> integral_eq(exponents);
-          integral_eq[variable]++;
-          CoeffT factor =
-              CoeffT(1) / CoeffT(integral_eq[variable]);
-          integral.coeff(integral_eq) =
-              factor * coeff(exponents);
-        });
     for(int i = 0; i < _dim; i++) {
       buf[i] = 0;
     }
     integral.coeff(buf) = constant;
     return integral;
+  }
+
+  Polynomial<CoeffT, _degree_range - 1, _dim> differentiate(
+      int variable) const {
+    Polynomial<CoeffT, _degree_range - 1, _dim> derivative(
+        (Zero_Tag()));
+    coeff_iterator([&](const Array<int, _dim> &exponents) {
+      Array<int, _dim> buf(exponents);
+      if(buf[variable] > 0) {
+        buf[variable]--;
+        derivative.coeff(buf) =
+            CoeffT(exponents[variable]) * coeff(exponents);
+      }
+    });
+    return derivative;
   }
 
   template <
@@ -161,6 +168,12 @@ class Polynomial {
   friend class Polynomial;
 
  private:
+  template <typename Lambda>
+  void coeff_iterator(Lambda function) const {
+    Array<int, _dim> exponents;
+    coeff_iterator(_degree_range, 0, exponents, function);
+  }
+
   template <typename Lambda>
   void coeff_iterator(const int exp_left, const int cur_dim,
                       Array<int, _dim> &exponents,
@@ -316,6 +329,20 @@ class Polynomial<CoeffT, 0, _dim> {
       const Array<int, _dim> &exponents) noexcept {
     assert(CTMath::sum(exponents) == 0);
     return value;
+  }
+
+  Polynomial<CoeffT, 1, _dim> integrate(
+      int variable, const CoeffT &constant) const {
+    Polynomial<CoeffT, 1, _dim> p((Zero_Tag()));
+    Array<int, _dim> exp_spec;
+    for(int i = 0; i < _dim; i++) {
+      exp_spec[i] = 0;
+    }
+    CoeffT tmp = p.coeff(exp_spec);
+    p.coeff(exp_spec) = constant;
+    exp_spec[variable] = 1;
+    p.coeff(exp_spec) = tmp;
+    return p;
   }
 
   template <typename... int_list,

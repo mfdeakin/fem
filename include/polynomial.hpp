@@ -8,6 +8,7 @@
 
 #include <iostream>
 
+#include <functional>
 #include <type_traits>
 
 namespace Numerical {
@@ -93,6 +94,36 @@ class Polynomial {
     }
   }
 
+  template <int other_degree_range,
+            typename std::enable_if<(_degree_range >
+                                     other_degree_range),
+                                    int>::type = 0>
+  Polynomial<CoeffT, _degree_range, _dim> sum(
+      const Polynomial<CoeffT, other_degree_range, _dim> &m)
+      const {
+    Polynomial<CoeffT, _degree_range, _dim> s(
+        (Tags::Zero_Tag()));
+    coeff_iterator([&](const Array<int, _dim> &exponents) {
+      if(CTMath::sum(exponents) <= other_degree_range) {
+        s.coeff(exponents) =
+            coeff(exponents) + m.coeff(exponents);
+      } else {
+        s.coeff(exponents) = coeff(exponents);
+      }
+    });
+    return s;
+  }
+
+  template <int other_degree_range,
+            typename std::enable_if<(other_degree_range >
+                                     _degree_range),
+                                    int>::type = 0>
+  Polynomial<CoeffT, other_degree_range, _dim> sum(
+      const Polynomial<CoeffT, other_degree_range, _dim> &m)
+      const {
+    return m.sum(*this);
+  }
+
   template <int other_degree_range>
   Polynomial<CoeffT, _degree_range + other_degree_range,
              _dim>
@@ -164,16 +195,17 @@ class Polynomial {
   friend class Polynomial;
 
  private:
-  template <typename Lambda>
-  void coeff_iterator(Lambda function) const {
+  using Signature_Lambda =
+      std::function<void(const Array<int, _dim> &)>;
+
+  void coeff_iterator(Signature_Lambda function) const {
     Array<int, _dim> exponents;
     coeff_iterator(_degree_range, 0, exponents, function);
   }
 
-  template <typename Lambda>
   void coeff_iterator(const int exp_left, const int cur_dim,
                       Array<int, _dim> &exponents,
-                      Lambda function) const {
+                      Signature_Lambda function) const {
     for(exponents[cur_dim] = 0;
         exponents[cur_dim] <= exp_left;
         exponents[cur_dim]++) {
@@ -341,7 +373,8 @@ class Polynomial<CoeffT, 0, _dim> {
     return p;
   }
 
-  Polynomial<CoeffT, 0, _dim) differentiate(int variable) const {
+  Polynomial<CoeffT, 0, _dim> differentiate(
+      int variable) const {
     Polynomial<CoeffT, 0, _dim> p((Tags::Zero_Tag()));
     return p;
   }

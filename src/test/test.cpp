@@ -66,6 +66,107 @@ TEST_CASE("Polynomial Integral", "[Polynomial]") {
   }
 }
 
+TEST_CASE("Polynomial Sum", "[Polynomial]") {
+  constexpr const int dim = 3;
+  constexpr const int degree_range_1 = 2;
+  constexpr const int degree_range_2 = degree_range_1 + 1;
+  using CoeffT = double;
+  using P1 = Polynomial<CoeffT, degree_range_1, dim>;
+  using P2 = Polynomial<CoeffT, degree_range_2, dim>;
+  P1 x;
+  x.coeff(0, 0, 0) = 2.0;
+
+  x.coeff(0, 0, 1) = 3.0;
+  x.coeff(0, 1, 0) = 5.0;
+  x.coeff(1, 0, 0) = 7.0;
+
+  x.coeff(0, 0, 2) = 1.0;
+  x.coeff(0, 1, 1) = 0.0;
+  x.coeff(0, 2, 0) = 1.0;
+  x.coeff(1, 0, 1) = 0.0;
+  x.coeff(1, 1, 0) = 0.0;
+  x.coeff(2, 0, 0) = 1.0;
+
+  P2 y;
+  y.coeff(0, 0, 0) = 3.0;
+
+  y.coeff(0, 0, 1) = 5.0;
+  y.coeff(0, 1, 0) = 7.0;
+  y.coeff(1, 0, 0) = 11.0;
+
+  y.coeff(0, 0, 2) = 13.0;
+  y.coeff(0, 1, 1) = 17.0;
+  y.coeff(0, 2, 0) = 19.0;
+  y.coeff(1, 0, 1) = 23.0;
+  y.coeff(1, 1, 0) = 29.0;
+  y.coeff(2, 0, 0) = 31.0;
+
+  y.coeff(0, 0, 3) = 37.0;
+  y.coeff(0, 1, 2) = 41.0;
+  y.coeff(0, 2, 1) = 43.0;
+  y.coeff(0, 3, 0) = 47.0;
+  y.coeff(1, 0, 2) = 53.0;
+  y.coeff(1, 1, 1) = 59.0;
+  y.coeff(1, 2, 0) = 61.0;
+  y.coeff(2, 0, 1) = 67.0;
+  y.coeff(2, 1, 0) = 71.0;
+  y.coeff(3, 0, 0) = 73.0;
+
+  using PSum = Polynomial<CoeffT, degree_range_2, dim>;
+  SECTION("dir 1") {
+    PSum s = x.sum(y);
+    REQUIRE(s.coeff(0, 0, 0) == 5.0);
+
+    REQUIRE(s.coeff(0, 0, 1) == 8.0);
+    REQUIRE(s.coeff(0, 1, 0) == 12.0);
+    REQUIRE(s.coeff(1, 0, 0) == 18.0);
+
+    REQUIRE(s.coeff(0, 0, 2) == 14.0);
+    REQUIRE(s.coeff(0, 1, 1) == 17.0);
+    REQUIRE(s.coeff(0, 2, 0) == 20.0);
+    REQUIRE(s.coeff(1, 0, 1) == 23.0);
+    REQUIRE(s.coeff(1, 1, 0) == 29.0);
+    REQUIRE(s.coeff(2, 0, 0) == 32.0);
+
+    REQUIRE(s.coeff(0, 0, 3) == 37.0);
+    REQUIRE(s.coeff(0, 1, 2) == 41.0);
+    REQUIRE(s.coeff(0, 2, 1) == 43.0);
+    REQUIRE(s.coeff(0, 3, 0) == 47.0);
+    REQUIRE(s.coeff(1, 0, 2) == 53.0);
+    REQUIRE(s.coeff(1, 1, 1) == 59.0);
+    REQUIRE(s.coeff(1, 2, 0) == 61.0);
+    REQUIRE(s.coeff(2, 0, 1) == 67.0);
+    REQUIRE(s.coeff(2, 1, 0) == 71.0);
+    REQUIRE(s.coeff(3, 0, 0) == 73.0);
+  }
+  SECTION("dir 2") {
+    PSum s = y.sum(x);
+    REQUIRE(s.coeff(0, 0, 0) == 5.0);
+
+    REQUIRE(s.coeff(0, 0, 1) == 8.0);
+    REQUIRE(s.coeff(0, 1, 0) == 12.0);
+    REQUIRE(s.coeff(1, 0, 0) == 18.0);
+
+    REQUIRE(s.coeff(0, 0, 2) == 14.0);
+    REQUIRE(s.coeff(0, 1, 1) == 17.0);
+    REQUIRE(s.coeff(0, 2, 0) == 20.0);
+    REQUIRE(s.coeff(1, 0, 1) == 23.0);
+    REQUIRE(s.coeff(1, 1, 0) == 29.0);
+    REQUIRE(s.coeff(2, 0, 0) == 32.0);
+
+    REQUIRE(s.coeff(0, 0, 3) == 37.0);
+    REQUIRE(s.coeff(0, 1, 2) == 41.0);
+    REQUIRE(s.coeff(0, 2, 1) == 43.0);
+    REQUIRE(s.coeff(0, 3, 0) == 47.0);
+    REQUIRE(s.coeff(1, 0, 2) == 53.0);
+    REQUIRE(s.coeff(1, 1, 1) == 59.0);
+    REQUIRE(s.coeff(1, 2, 0) == 61.0);
+    REQUIRE(s.coeff(2, 0, 1) == 67.0);
+    REQUIRE(s.coeff(2, 1, 0) == 71.0);
+    REQUIRE(s.coeff(3, 0, 0) == 73.0);
+  }
+}
+
 TEST_CASE("Polynomial Product", "[Polynomial]") {
   constexpr const int dim = 3;
   constexpr const int degree_range_1 = 2;

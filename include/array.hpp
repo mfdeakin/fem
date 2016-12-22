@@ -8,6 +8,8 @@
 #include <cassert>
 #include <initializer_list>
 
+#include <iostream>
+
 #include "cudadef.h"
 
 template <typename T, int sz>

@@ -13,6 +13,64 @@
 
 using namespace Numerical;
 
+TEST_CASE("Polynomial Slice", "[Polynomial]") {
+	constexpr const int dim_1 = 3;
+	constexpr const int dim_2 = dim_1 - 1;
+	constexpr const int degree_range = 2;
+  using CoeffT = double;
+  using P = Polynomial<CoeffT, degree_range, dim_1>;
+  using S = Polynomial<CoeffT, degree_range, dim_2>;
+  P x;
+  x.coeff(0, 0, 0) = 2.0;
+
+  x.coeff(0, 0, 1) = 3.0;
+  x.coeff(0, 1, 0) = 5.0;
+  x.coeff(1, 0, 0) = 7.0;
+
+  x.coeff(0, 0, 2) = 1.0;
+  x.coeff(0, 1, 1) = 0.0;
+  x.coeff(0, 2, 0) = 1.0;
+  x.coeff(1, 0, 1) = 0.0;
+  x.coeff(1, 1, 0) = 0.0;
+  x.coeff(2, 0, 0) = 1.0;
+
+	SECTION("Slice 0") {
+		S s = x.slice(0, 2.0);
+		REQUIRE(s.coeff(0, 0) == 20.0);
+
+		REQUIRE(s.coeff(0, 1) == 3.0);
+		REQUIRE(s.coeff(1, 0) == 5.0);
+
+		REQUIRE(s.coeff(0, 2) == 1.0);
+		REQUIRE(s.coeff(1, 1) == 0.0);
+		REQUIRE(s.coeff(2, 0) == 1.0);
+	}
+
+	SECTION("Slice 1") {
+		S s = x.slice(1, 3.0);
+		REQUIRE(s.coeff(0, 0) == 26.0);
+
+		REQUIRE(s.coeff(0, 1) == 3.0);
+		REQUIRE(s.coeff(1, 0) == 7.0);
+
+		REQUIRE(s.coeff(0, 2) == 1.0);
+		REQUIRE(s.coeff(1, 1) == 0.0);
+		REQUIRE(s.coeff(2, 0) == 1.0);
+	}
+
+	SECTION("Slice 2") {
+		S s = x.slice(2, 5.0);
+		REQUIRE(s.coeff(0, 0) == 42.0);
+
+		REQUIRE(s.coeff(0, 1) == 5.0);
+		REQUIRE(s.coeff(1, 0) == 7.0);
+
+		REQUIRE(s.coeff(0, 2) == 1.0);
+		REQUIRE(s.coeff(1, 1) == 0.0);
+		REQUIRE(s.coeff(2, 0) == 1.0);
+	}
+}
+
 TEST_CASE("Polynomial Integral", "[Polynomial]") {
   constexpr const int dim = 3;
   constexpr const int degree_range_1 = 2;

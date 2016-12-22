@@ -13,12 +13,12 @@
 
 namespace Numerical {
 
-template <typename CoeffT, int _degree_range, int _dim>
+template <typename CoeffT, int _degree, int _dim>
 class Polynomial {
  public:
   Polynomial() {
-    static_assert(_degree_range >= 0,
-                  "A polynomial's _degree_range (max "
+    static_assert(_degree >= 0,
+                  "A polynomial's _degree (max "
                   "exponent-min exponent) must be at least "
                   "zero, otherwise it's degenerate");
     static_assert(_dim >= 0,
@@ -29,8 +29,8 @@ class Polynomial {
   Polynomial(const Tags::Zero_Tag &)
       : lower_degree(Tags::Zero_Tag()),
         coeffs(Tags::Zero_Tag()) {
-    static_assert(_degree_range >= 0,
-                  "A polynomial's _degree_range (max "
+    static_assert(_degree >= 0,
+                  "A polynomial's _degree (max "
                   "exponent-min exponent) must be at least "
                   "zero, otherwise it's degenerate");
     static_assert(_dim >= 0,
@@ -42,37 +42,20 @@ class Polynomial {
             typename std::enable_if<
                 sizeof...(int_list) == _dim, int>::type = 0>
   CoeffT coeff(int_list... args) const noexcept {
-    if(CTMath::sum(args...) == _degree_range) {
-      int idx =
-          get_coeff_idx_helper(_degree_range, args...);
-      assert(idx >= 0);
-      assert(idx < num_coeffs);
-      return coeffs[idx];
-    } else {
-      return lower_degree.coeff(args...);
-    }
+    return coeff(Array<int, _dim>(args...));
   }
 
   template <typename... int_list,
             typename std::enable_if<
                 sizeof...(int_list) == _dim, int>::type = 0>
   CoeffT &coeff(int_list... args) noexcept {
-    if(CTMath::sum(args...) == _degree_range) {
-      int idx =
-          get_coeff_idx_helper(_degree_range, args...);
-      assert(idx >= 0);
-      assert(idx < num_coeffs);
-      return coeffs[idx];
-    } else {
-      return lower_degree.coeff(args...);
-    }
+    return coeff(Array<int, _dim>(args...));
   }
 
   CoeffT coeff(const Array<int, _dim> &exponents) const
       noexcept {
-    if(CTMath::sum(exponents) == _degree_range) {
-      int idx =
-          get_coeff_idx_helper(_degree_range, exponents);
+    if(CTMath::sum(exponents) == _degree) {
+      int idx = get_coeff_idx_helper(_degree, exponents);
       assert(idx >= 0);
       assert(idx < num_coeffs);
       return coeffs[idx];
@@ -83,9 +66,8 @@ class Polynomial {
 
   CoeffT &coeff(
       const Array<int, _dim> &exponents) noexcept {
-    if(CTMath::sum(exponents) == _degree_range) {
-      int idx =
-          get_coeff_idx_helper(_degree_range, exponents);
+    if(CTMath::sum(exponents) == _degree) {
+      int idx = get_coeff_idx_helper(_degree, exponents);
       assert(idx >= 0);
       assert(idx < num_coeffs);
       return coeffs[idx];
@@ -94,17 +76,63 @@ class Polynomial {
     }
   }
 
-  template <int other_degree_range,
-            typename std::enable_if<(_degree_range >
-                                     other_degree_range),
-                                    int>::type = 0>
-  Polynomial<CoeffT, _degree_range, _dim> sum(
-      const Polynomial<CoeffT, other_degree_range, _dim> &m)
-      const {
-    Polynomial<CoeffT, _degree_range, _dim> s(
-        (Tags::Zero_Tag()));
+  Polynomial<CoeffT, _degree, _dim> operator+(
+      CoeffT val) const {
+    Polynomial<CoeffT, _degree, _dim> p(*this);
+    p.coeff(Array<int, _dim>((Tags::Zero_Tag()))) += val;
+    return p;
+  }
+
+  Polynomial<CoeffT, _degree, _dim> operator-(
+      CoeffT val) const {
+    return *this + (-val);
+  }
+
+  Polynomial<CoeffT, _degree, _dim> operator-() const {
+    Polynomial<CoeffT, _degree, _dim> p;
+    p.coeff_iterator(
+        [&](const Array<int, _dim> &exponents) {
+          p.coeff(exponents) = -coeff(exponents);
+        });
+    return p;
+  }
+
+  Polynomial<CoeffT, _degree, _dim> operator*(
+      CoeffT val) const {
+    Polynomial<CoeffT, _degree, _dim> p;
     coeff_iterator([&](const Array<int, _dim> &exponents) {
-      if(CTMath::sum(exponents) <= other_degree_range) {
+      p.coeff(exponents) = coeff(exponents) * val;
+    });
+    return p;
+  }
+
+  template <int other_degree,
+            typename std::enable_if<
+                (_degree > other_degree), int>::type = 0>
+  Polynomial<CoeffT, _degree, _dim> operator+(
+      const Polynomial<CoeffT, other_degree, _dim> &m)
+      const {
+    return sum(m);
+  }
+
+  template <int other_degree,
+            typename std::enable_if<
+                (_degree <= other_degree), int>::type = 0>
+  Polynomial<CoeffT, other_degree, _dim> operator+(
+      const Polynomial<CoeffT, other_degree, _dim> &m)
+      const {
+    return sum(m);
+  }
+
+  template <int other_degree,
+            typename std::enable_if<
+                (_degree >= other_degree), int>::type = 0>
+  Polynomial<CoeffT, _degree, _dim> sum(
+      const Polynomial<CoeffT, other_degree, _dim> &m)
+      const {
+    Polynomial<CoeffT, _degree, _dim> s((Tags::Zero_Tag()));
+    coeff_iterator([&](const Array<int, _dim> &exponents) {
+      if(CTMath::sum(exponents) <= other_degree) {
         s.coeff(exponents) =
             coeff(exponents) + m.coeff(exponents);
       } else {
@@ -114,23 +142,28 @@ class Polynomial {
     return s;
   }
 
-  template <int other_degree_range,
-            typename std::enable_if<(other_degree_range >
-                                     _degree_range),
-                                    int>::type = 0>
-  Polynomial<CoeffT, other_degree_range, _dim> sum(
-      const Polynomial<CoeffT, other_degree_range, _dim> &m)
+  template <int other_degree,
+            typename std::enable_if<
+                (_degree < other_degree), int>::type = 0>
+  Polynomial<CoeffT, other_degree, _dim> sum(
+      const Polynomial<CoeffT, other_degree, _dim> &m)
       const {
     return m.sum(*this);
   }
 
-  template <int other_degree_range>
-  Polynomial<CoeffT, _degree_range + other_degree_range,
-             _dim>
-  product(const Polynomial<CoeffT, other_degree_range, _dim>
-              &m) const {
-    using FP = Polynomial<
-        CoeffT, _degree_range + other_degree_range, _dim>;
+  template <int other_degree>
+  Polynomial<CoeffT, _degree + other_degree, _dim> operator
+      *(const Polynomial<CoeffT, other_degree, _dim> &m)
+          const {
+    return product(m);
+  }
+
+  template <int other_degree>
+  Polynomial<CoeffT, _degree + other_degree, _dim> product(
+      const Polynomial<CoeffT, other_degree, _dim> &m)
+      const {
+    using FP =
+        Polynomial<CoeffT, _degree + other_degree, _dim>;
     FP prod((Tags::Zero_Tag()));
     coeff_iterator([&](const Array<int, _dim> &exponents) {
       m.coeff_iterator(
@@ -147,9 +180,9 @@ class Polynomial {
     return prod;
   }
 
-  Polynomial<CoeffT, _degree_range + 1, _dim> integrate(
+  Polynomial<CoeffT, _degree + 1, _dim> integrate(
       int variable, CoeffT constant = 0) const {
-    Polynomial<CoeffT, _degree_range + 1, _dim> integral(
+    Polynomial<CoeffT, _degree + 1, _dim> integral(
         (Tags::Zero_Tag()));
     coeff_iterator([&](const Array<int, _dim> &exponents) {
       Array<int, _dim> integral_eq(exponents);
@@ -167,9 +200,9 @@ class Polynomial {
     return integral;
   }
 
-  Polynomial<CoeffT, _degree_range - 1, _dim> differentiate(
+  Polynomial<CoeffT, _degree - 1, _dim> differentiate(
       int variable) const {
-    Polynomial<CoeffT, _degree_range - 1, _dim> derivative(
+    Polynomial<CoeffT, _degree - 1, _dim> derivative(
         (Tags::Zero_Tag()));
     coeff_iterator([&](const Array<int, _dim> &exponents) {
       Array<int, _dim> buf(exponents);
@@ -182,27 +215,50 @@ class Polynomial {
     return derivative;
   }
 
+  Polynomial<CoeffT, _degree, _dim - 1> slice(
+      const int dim, const CoeffT slice_pos) const {
+    Polynomial<CoeffT, _degree, _dim - 1> s(
+        (Tags::Zero_Tag()));
+    Array<CoeffT, _degree + 1> factors;
+    factors[0] = 1.0;
+    for(int i = 1; i < _degree + 1; i++) {
+      factors[i] = slice_pos * factors[i - 1];
+    }
+    coeff_iterator([&](const Array<int, _dim> &exponents) {
+      Array<int, _dim - 1> buf;
+      for(int i = 0; i < dim; i++) {
+        buf[i] = exponents[i];
+      }
+      for(int i = dim + 1; i < _dim; i++) {
+        buf[i - 1] = exponents[i];
+      }
+      int e = exponents[dim];
+      s.coeff(buf) += coeff(exponents) * factors[e];
+    });
+    return s;
+  }
+
   template <
       typename... subs_list,
       typename std::enable_if<sizeof...(subs_list) == _dim,
                               int>::type = 0>
   CoeffT eval(subs_list... vars) const {
     Array<int, _dim> exponents;
-    return eval_helper(_degree_range, exponents, vars...);
+    return eval_helper(_degree, exponents, vars...);
+  }
+
+  using Signature_Lambda =
+      std::function<void(const Array<int, _dim> &)>;
+
+  void coeff_iterator(Signature_Lambda function) const {
+    Array<int, _dim> exponents;
+    coeff_iterator(_degree, 0, exponents, function);
   }
 
   template <typename, int, int>
   friend class Polynomial;
 
  private:
-  using Signature_Lambda =
-      std::function<void(const Array<int, _dim> &)>;
-
-  void coeff_iterator(Signature_Lambda function) const {
-    Array<int, _dim> exponents;
-    coeff_iterator(_degree_range, 0, exponents, function);
-  }
-
   void coeff_iterator(const int exp_left, const int cur_dim,
                       Array<int, _dim> &exponents,
                       Signature_Lambda function) const {
@@ -224,7 +280,7 @@ class Polynomial {
                      CoeffT cur_var,
                      subs_list... vars) const {
     constexpr const auto cur_dim =
-        _dim - sizeof...(subs_list)-1;
+        _dim - sizeof...(subs_list) - 1;
     CoeffT factor = 1.0;
     CoeffT term_sum = 0.0;
     for(exponents[cur_dim] = 0;
@@ -258,37 +314,11 @@ class Polynomial {
                 sizeof...(int_list) == _dim, int>::type = 0>
   static int get_coeff_idx(int_list... args) noexcept {
     const int term_degree = CTMath::sum(args...);
-    if(term_degree >= 0 && term_degree <= _degree_range) {
+    if(term_degree >= 0 && term_degree <= _degree) {
       return get_coeff_idx_helper(term_degree, args...);
     } else {
       return DEGREE_RANGE_OVERFLOW;
     }
-  }
-
-  template <typename int_t, typename... int_list>
-  static int get_coeff_idx_helper(
-      int_t exp_left, int_t head,
-      int_list... args) noexcept {
-    int nck = _dim + exp_left - 1;
-    int term_1 =
-        nck * CTMath::n_choose_k(nck - 1, exp_left);
-    int term_2 =
-        (nck - head) *
-        CTMath::n_choose_k(nck - head - 1, exp_left - head);
-    int first_index = (term_1 - term_2) / (_dim - 1);
-    return first_index +
-           Polynomial<CoeffT, _degree_range, _dim - 1>::
-               get_coeff_idx_helper(exp_left - head,
-                                    args...);
-  }
-
-  template <typename int_t>
-  static int get_coeff_idx_helper(int_t exp_left,
-                                  int_t arg) noexcept {
-    return arg == exp_left
-               ? 0
-               : arg > exp_left ? DEGREE_RANGE_OVERFLOW
-                                : DEGREE_RANGE_UNDERFLOW;
   }
 
   template <typename int_t>
@@ -312,11 +342,10 @@ class Polynomial {
   static constexpr const int dim = _dim;
 
   static constexpr const int num_coeffs =
-      CTMath::poly_degree_num_coeffs<int>(_degree_range,
-                                          _dim);
+      CTMath::poly_degree_num_coeffs<int>(_degree, _dim);
   Array<CoeffT, num_coeffs> coeffs;
 
-  Polynomial<CoeffT, _degree_range - 1, _dim> lower_degree;
+  Polynomial<CoeffT, _degree - 1, _dim> lower_degree;
 
   enum {
     DEGREE_RANGE_UNDERFLOW = -1,
@@ -359,17 +388,71 @@ class Polynomial<CoeffT, 0, _dim> {
     return value;
   }
 
+  template <int other_degree,
+            typename std::enable_if<(other_degree == 0),
+                                    int>::type = 0>
+  Polynomial<CoeffT, 0, _dim> sum(
+      const Polynomial<CoeffT, other_degree, _dim> &m)
+      const {
+    Polynomial<CoeffT, 0, _dim> s;
+    const Array<int, _dim> zero((Tags::Zero_Tag()));
+    s.coeff(zero) = coeff(zero) + s.coeff(zero);
+    return s;
+  }
+
+  template <int other_degree,
+            typename std::enable_if<(other_degree > 0),
+                                    int>::type = 0>
+  Polynomial<CoeffT, other_degree, _dim> sum(
+      const Polynomial<CoeffT, other_degree, _dim> &m)
+      const {
+    return m.sum(*this);
+  }
+
+  Polynomial<CoeffT, 0, _dim> operator*(
+      const CoeffT s) const {
+    Polynomial<CoeffT, 0, _dim> p;
+    const Array<int, _dim> zeros((Tags::Zero_Tag()));
+    p.coeff(zeros) = coeff(zeros) * s;
+    return p;
+  }
+
+  template <int other_degree>
+  Polynomial<CoeffT, other_degree, _dim> operator*(
+      const Polynomial<CoeffT, other_degree, _dim> &m)
+      const {
+    return product(m);
+  }
+
+  template <int other_degree>
+  Polynomial<CoeffT, other_degree, _dim> product(
+      const Polynomial<CoeffT, other_degree, _dim> &m)
+      const {
+    const Array<int, _dim> zero((Tags::Zero_Tag()));
+    Polynomial<CoeffT, other_degree, _dim> p(
+        (Tags::Zero_Tag()));
+    p.coeff_iterator([&](
+        const Array<int, _dim> &exponents) {
+      p.coeff(exponents) = coeff(zero) * m.coeff(exponents);
+    });
+    return p;
+  }
+
+  Polynomial<CoeffT, 0, _dim> operator-() const {
+    Polynomial<CoeffT, 0, _dim> p;
+    const Array<int, _dim> zeros((Tags::Zero_Tag()));
+    p.coeff(zeros) = -coeff(zeros);
+    return p;
+  }
+
   Polynomial<CoeffT, 1, _dim> integrate(
-      int variable, const CoeffT &constant) const {
+      int variable, const CoeffT &constant = 0) const {
     Polynomial<CoeffT, 1, _dim> p((Tags::Zero_Tag()));
-    Array<int, _dim> exp_spec;
-    for(int i = 0; i < _dim; i++) {
-      exp_spec[i] = 0;
-    }
-    CoeffT tmp = p.coeff(exp_spec);
+    Array<int, _dim> exp_spec((Tags::Zero_Tag()));
     p.coeff(exp_spec) = constant;
+    CoeffT integrated = coeff(exp_spec);
     exp_spec[variable] = 1;
-    p.coeff(exp_spec) = tmp;
+    p.coeff(exp_spec) = integrated;
     return p;
   }
 
@@ -397,6 +480,14 @@ class Polynomial<CoeffT, 0, _dim> {
     return get_coeff_idx(head, args...);
   }
 
+  using Signature_Lambda =
+      std::function<void(const Array<int, _dim> &)>;
+
+  void coeff_iterator(Signature_Lambda function) const {
+    Array<int, _dim> exponents((Tags::Zero_Tag()));
+    function(exponents);
+  }
+
   template <typename, int, int>
   friend class Polynomial;
 
@@ -412,17 +503,17 @@ class Polynomial<CoeffT, 0, _dim> {
   };
 };
 
-template <typename CoeffT, int _degree_range>
-class Polynomial<CoeffT, _degree_range, 0> {
+template <typename CoeffT, int _degree>
+class Polynomial<CoeffT, _degree, 0> {
  public:
   Polynomial() {
-    static_assert(_degree_range == 0,
+    static_assert(_degree == 0,
                   "The degree range of a zero-d polynomial "
                   "must be zero");
   }
 
   Polynomial(const Tags::Zero_Tag &) : value(0) {
-    static_assert(_degree_range == 0,
+    static_assert(_degree == 0,
                   "The degree range of a zero-d polynomial "
                   "must be zero");
   }
@@ -440,6 +531,13 @@ class Polynomial<CoeffT, _degree_range, 0> {
     return value;
   }
 
+  Polynomial<CoeffT, _degree, 0> operator-() const {
+    Polynomial<CoeffT, _degree, 0> p;
+    const Array<int, 0> zeros((Tags::Zero_Tag()));
+    p.coeff(zeros) = -coeff(zeros);
+    return p;
+  }
+
   template <typename, int, int>
   friend class Polynomial;
 
@@ -447,9 +545,10 @@ class Polynomial<CoeffT, _degree_range, 0> {
   static int get_coeff_idx() noexcept { return 0; }
 
   static int get_coeff_idx_helper(int exp_left) noexcept {
-    return exp_left == 0 ? 0 : exp_left > 0
-                                   ? DEGREE_RANGE_OVERFLOW
-                                   : DEGREE_RANGE_UNDERFLOW;
+    return exp_left == 0
+               ? 0
+               : exp_left > 0 ? DEGREE_RANGE_OVERFLOW
+                              : DEGREE_RANGE_UNDERFLOW;
   }
 
   static constexpr const int dim = 0;
@@ -462,6 +561,27 @@ class Polynomial<CoeffT, _degree_range, 0> {
     DEGREE_RANGE_OVERFLOW = -2,
   };
 };
+
+template <typename CoeffT, int _degree, int _dim>
+Polynomial<CoeffT, _degree, _dim> operator+(
+    const CoeffT scalar,
+    const Polynomial<CoeffT, _degree, _dim> &p) {
+  return p + scalar;
+}
+
+template <typename CoeffT, int _degree, int _dim>
+Polynomial<CoeffT, _degree, _dim> operator-(
+    const CoeffT scalar,
+    const Polynomial<CoeffT, _degree, _dim> &p) {
+  return p + -scalar;
+}
+
+template <typename CoeffT, int _degree, int _dim>
+Polynomial<CoeffT, _degree, _dim> operator*(
+    const CoeffT scalar,
+    const Polynomial<CoeffT, _degree, _dim> &p) {
+  return p * scalar;
+}
 }
 
 #endif  //_POLYNOMIAL_HPP_

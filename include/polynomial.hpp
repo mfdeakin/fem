@@ -16,6 +16,9 @@ namespace Numerical {
 template <typename CoeffT, int _degree, int _dim>
 class Polynomial {
  public:
+  static constexpr const int dim = _dim;
+  static constexpr const int degree = _degree;
+
   Polynomial() {
     static_assert(_degree >= 0,
                   "A polynomial's _degree (max "
@@ -238,6 +241,36 @@ class Polynomial {
     return s;
   }
 
+  template <typename P_Cast>
+  P_Cast &change_degree(P_Cast &reduced) const {
+    static_assert(
+        _dim == P_Cast::dim,
+        "Cannot change degree to another dimension");
+    coeff_iterator([&](const Array<int, _dim> &exponents) {
+      if(CTMath::sum(exponents) <= P_Cast::degree) {
+        reduced.coeff(exponents) = coeff(exponents);
+      } else {
+        assert(coeff(exponents) == CoeffT(0.0));
+      }
+    });
+    return reduced;
+  }
+
+  template <typename P_Cast>
+  P_Cast &change_degree(P_Cast &&reduced) const {
+    static_assert(
+        _dim == P_Cast::dim,
+        "Cannot change degree to another dimension");
+    coeff_iterator([&](const Array<int, _dim> &exponents) {
+      if(CTMath::sum(exponents) <= P_Cast::degree) {
+        reduced.coeff(exponents) = coeff(exponents);
+      } else {
+        assert(coeff(exponents) == CoeffT(0.0));
+      }
+    });
+    return reduced;
+  }
+
   template <
       typename... subs_list,
       typename std::enable_if<sizeof...(subs_list) == _dim,
@@ -339,8 +372,6 @@ class Polynomial {
     return cur_sum;
   }
 
-  static constexpr const int dim = _dim;
-
   static constexpr const int num_coeffs =
       CTMath::poly_degree_num_coeffs<int>(_degree, _dim);
   Array<CoeffT, num_coeffs> coeffs;
@@ -356,6 +387,9 @@ class Polynomial {
 template <typename CoeffT, int _dim>
 class Polynomial<CoeffT, 0, _dim> {
  public:
+  static constexpr const int degree = 0;
+  static constexpr const int dim = _dim;
+
   Polynomial() {}
 
   Polynomial(const Tags::Zero_Tag &) : value(0) {}
@@ -407,6 +441,31 @@ class Polynomial<CoeffT, 0, _dim> {
       const Polynomial<CoeffT, other_degree, _dim> &m)
       const {
     return m.sum(*this);
+  }
+
+  template <int other_degree,
+            typename std::enable_if<(other_degree == 0),
+                                    int>::type = 0>
+  Polynomial<CoeffT, 0, _dim> operator+(
+      const Polynomial<CoeffT, other_degree, _dim> &m)
+      const {
+    return sum(*this);
+  }
+
+  template <int other_degree,
+            typename std::enable_if<(other_degree > 0),
+                                    int>::type = 0>
+  Polynomial<CoeffT, other_degree, _dim> operator+(
+      const Polynomial<CoeffT, other_degree, _dim> &m)
+      const {
+    return m.sum(*this);
+  }
+
+  Polynomial<CoeffT, 0, _dim> operator+(
+      const CoeffT &c) const {
+    Polynomial<CoeffT, 0, _dim> ret(*this);
+    ret.coeff(Array<int, _dim>((Tags::Zero_Tag()))) += c;
+    return ret;
   }
 
   Polynomial<CoeffT, 0, _dim> operator*(
@@ -462,6 +521,26 @@ class Polynomial<CoeffT, 0, _dim> {
     return p;
   }
 
+  template <typename P_Cast>
+  P_Cast &change_degree(P_Cast &reduced) const {
+    static_assert(
+        _dim == P_Cast::dim,
+        "Cannot change degree to different dimension");
+    const Array<int, _dim> zero((Tags::Zero_Tag()));
+    reduced.coeff(zero) = coeff(zero);
+    return reduced;
+  }
+
+  template <typename P_Cast>
+  P_Cast &change_degree(P_Cast &&reduced) const {
+    static_assert(
+        _dim == P_Cast::dim,
+        "Cannot change degree to different dimension");
+    const Array<int, _dim> zero((Tags::Zero_Tag()));
+    reduced.coeff(zero) = coeff(zero);
+    return reduced;
+  }
+
   template <typename... int_list,
             typename std::enable_if<
                 sizeof...(int_list) == _dim, int>::type = 0>
@@ -492,8 +571,6 @@ class Polynomial<CoeffT, 0, _dim> {
   friend class Polynomial;
 
  private:
-  static constexpr const int dim = _dim;
-
   static constexpr const int num_coeffs = 1;
   CoeffT value;
 
@@ -506,6 +583,9 @@ class Polynomial<CoeffT, 0, _dim> {
 template <typename CoeffT, int _degree>
 class Polynomial<CoeffT, _degree, 0> {
  public:
+  static constexpr const int dim = 0;
+  static constexpr const int degree = _degree;
+
   Polynomial() {
     static_assert(_degree == 0,
                   "The degree range of a zero-d polynomial "
@@ -550,8 +630,6 @@ class Polynomial<CoeffT, _degree, 0> {
                : exp_left > 0 ? DEGREE_RANGE_OVERFLOW
                               : DEGREE_RANGE_UNDERFLOW;
   }
-
-  static constexpr const int dim = 0;
 
   static constexpr const int num_coeffs = 1;
   CoeffT value;

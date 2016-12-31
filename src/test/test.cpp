@@ -13,10 +13,90 @@
 
 using namespace Numerical;
 
+TEST_CASE("Change Polynomial Degree", "[Polynomial]") {
+  constexpr const int dim = 3;
+  constexpr const int degree_1 = 2;
+  constexpr const int degree_2 = 3;
+  using CoeffT = double;
+  using P1 = Polynomial<CoeffT, degree_1, dim>;
+  using P2 = Polynomial<CoeffT, degree_2, dim>;
+  SECTION("Degree 3 to 2") {
+    P2 p_start((Tags::Zero_Tag()));
+    p_start.coeff(0, 0, 0) = 1.0;
+
+    p_start.coeff(0, 0, 1) = 2.0;
+    p_start.coeff(0, 1, 0) = 3.0;
+    p_start.coeff(1, 0, 0) = 4.0;
+
+    p_start.coeff(0, 0, 2) = 5.0;
+    p_start.coeff(0, 1, 1) = 6.0;
+    p_start.coeff(0, 2, 0) = 7.0;
+    p_start.coeff(1, 0, 1) = 8.0;
+    p_start.coeff(1, 1, 0) = 9.0;
+    p_start.coeff(2, 0, 0) = 10.0;
+
+    P1 reduced = p_start.change_degree(P1());
+    reduced.coeff_iterator(
+        [&](const Array<int, dim> &exponents) {
+          REQUIRE(reduced.coeff(exponents) ==
+                  p_start.coeff(exponents));
+        });
+  }
+  SECTION("Degree 2 to 3") {
+    P1 p_start((Tags::Zero_Tag()));
+    p_start.coeff(0, 0, 0) = 1.0;
+
+    p_start.coeff(0, 0, 1) = 2.0;
+    p_start.coeff(0, 1, 0) = 3.0;
+    p_start.coeff(1, 0, 0) = 4.0;
+
+    p_start.coeff(0, 0, 2) = 5.0;
+    p_start.coeff(0, 1, 1) = 6.0;
+    p_start.coeff(0, 2, 0) = 7.0;
+    p_start.coeff(1, 0, 1) = 8.0;
+    p_start.coeff(1, 1, 0) = 9.0;
+    p_start.coeff(2, 0, 0) = 10.0;
+
+    P2 increased =
+        p_start.change_degree(P2((Tags::Zero_Tag())));
+    increased.coeff_iterator(
+        [&](const Array<int, dim> &exponents) {
+          if(CTMath::sum(exponents) <= degree_1) {
+            REQUIRE(increased.coeff(exponents) ==
+                    p_start.coeff(exponents));
+          } else {
+            REQUIRE(increased.coeff(exponents) == 0.0);
+          }
+        });
+  }
+  SECTION("Degree 2 to 2") {
+    P1 p_start((Tags::Zero_Tag()));
+    p_start.coeff(0, 0, 0) = 1.0;
+
+    p_start.coeff(0, 0, 1) = 2.0;
+    p_start.coeff(0, 1, 0) = 3.0;
+    p_start.coeff(1, 0, 0) = 4.0;
+
+    p_start.coeff(0, 0, 2) = 5.0;
+    p_start.coeff(0, 1, 1) = 6.0;
+    p_start.coeff(0, 2, 0) = 7.0;
+    p_start.coeff(1, 0, 1) = 8.0;
+    p_start.coeff(1, 1, 0) = 9.0;
+    p_start.coeff(2, 0, 0) = 10.0;
+
+    P1 copy = p_start.change_degree(P1((Tags::Zero_Tag())));
+    copy.coeff_iterator(
+        [&](const Array<int, dim> &exponents) {
+          REQUIRE(copy.coeff(exponents) ==
+                  p_start.coeff(exponents));
+        });
+  }
+}
+
 TEST_CASE("Polynomial Slice", "[Polynomial]") {
-	constexpr const int dim_1 = 3;
-	constexpr const int dim_2 = dim_1 - 1;
-	constexpr const int degree_range = 2;
+  constexpr const int dim_1 = 3;
+  constexpr const int dim_2 = dim_1 - 1;
+  constexpr const int degree_range = 2;
   using CoeffT = double;
   using P = Polynomial<CoeffT, degree_range, dim_1>;
   using S = Polynomial<CoeffT, degree_range, dim_2>;
@@ -34,41 +114,41 @@ TEST_CASE("Polynomial Slice", "[Polynomial]") {
   x.coeff(1, 1, 0) = 0.0;
   x.coeff(2, 0, 0) = 1.0;
 
-	SECTION("Slice 0") {
-		S s = x.slice(0, 2.0);
-		REQUIRE(s.coeff(0, 0) == 20.0);
+  SECTION("Slice 0") {
+    S s = x.slice(0, 2.0);
+    REQUIRE(s.coeff(0, 0) == 20.0);
 
-		REQUIRE(s.coeff(0, 1) == 3.0);
-		REQUIRE(s.coeff(1, 0) == 5.0);
+    REQUIRE(s.coeff(0, 1) == 3.0);
+    REQUIRE(s.coeff(1, 0) == 5.0);
 
-		REQUIRE(s.coeff(0, 2) == 1.0);
-		REQUIRE(s.coeff(1, 1) == 0.0);
-		REQUIRE(s.coeff(2, 0) == 1.0);
-	}
+    REQUIRE(s.coeff(0, 2) == 1.0);
+    REQUIRE(s.coeff(1, 1) == 0.0);
+    REQUIRE(s.coeff(2, 0) == 1.0);
+  }
 
-	SECTION("Slice 1") {
-		S s = x.slice(1, 3.0);
-		REQUIRE(s.coeff(0, 0) == 26.0);
+  SECTION("Slice 1") {
+    S s = x.slice(1, 3.0);
+    REQUIRE(s.coeff(0, 0) == 26.0);
 
-		REQUIRE(s.coeff(0, 1) == 3.0);
-		REQUIRE(s.coeff(1, 0) == 7.0);
+    REQUIRE(s.coeff(0, 1) == 3.0);
+    REQUIRE(s.coeff(1, 0) == 7.0);
 
-		REQUIRE(s.coeff(0, 2) == 1.0);
-		REQUIRE(s.coeff(1, 1) == 0.0);
-		REQUIRE(s.coeff(2, 0) == 1.0);
-	}
+    REQUIRE(s.coeff(0, 2) == 1.0);
+    REQUIRE(s.coeff(1, 1) == 0.0);
+    REQUIRE(s.coeff(2, 0) == 1.0);
+  }
 
-	SECTION("Slice 2") {
-		S s = x.slice(2, 5.0);
-		REQUIRE(s.coeff(0, 0) == 42.0);
+  SECTION("Slice 2") {
+    S s = x.slice(2, 5.0);
+    REQUIRE(s.coeff(0, 0) == 42.0);
 
-		REQUIRE(s.coeff(0, 1) == 5.0);
-		REQUIRE(s.coeff(1, 0) == 7.0);
+    REQUIRE(s.coeff(0, 1) == 5.0);
+    REQUIRE(s.coeff(1, 0) == 7.0);
 
-		REQUIRE(s.coeff(0, 2) == 1.0);
-		REQUIRE(s.coeff(1, 1) == 0.0);
-		REQUIRE(s.coeff(2, 0) == 1.0);
-	}
+    REQUIRE(s.coeff(0, 2) == 1.0);
+    REQUIRE(s.coeff(1, 1) == 0.0);
+    REQUIRE(s.coeff(2, 0) == 1.0);
+  }
 }
 
 TEST_CASE("Polynomial Integral", "[Polynomial]") {

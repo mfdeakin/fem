@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <cmath>
 
 #include "polynomial.hpp"
 
@@ -12,6 +13,54 @@ CoeffT dot_product(const P1 &x, const P2 &y) {
       x.product(y).integrate(0).integrate(1).integrate(2);
 
   return idp.eval(1.0, 1.0, 1.0) - idp.eval(0.0, 0.0, 0.0);
+}
+
+template <typename real, typename integer>
+real subfactorial(const integer &n) noexcept {
+  /* Computes !n */
+  real sum = 0.0;
+  for(int k = 0; k <= n; k++) {
+    real v =
+        real(1.0) / real(CTMath::partialFactorial(1, k));
+    if(k % 2 == 0) {
+      sum += v;
+    } else {
+      sum -= v;
+    }
+  }
+  real n_fact = real(CTMath::partialFactorial(1, n));
+  return n_fact * sum;
+}
+
+CoeffT x_exp_integral(int exp) {
+  constexpr const CoeffT E =
+      2.7182818284590452353602874713526624977572470937;
+  CoeffT v = E * subfactorial<CoeffT, int>(exp) -
+             CTMath::partialFactorial(1, exp);
+  if(exp % 2 == 1) {
+    v = -v;
+  }
+  return v;
+}
+
+template <typename Poly>
+CoeffT exp_dot_product(const Poly &p) {
+  /* Computes the dot product of p with
+   * exp(x1 + x2 + ... + xn)
+   * Each integral is separable, so compute each dimension
+   * separately then multiply them together
+   * \int_0^1 x^n exp(x) dx = (-1)^n (e(!n)-n!)
+   */
+  CoeffT dp = 0.0;
+  p.coeff_iterator(
+      [&](const Array<int, Poly::dim> &exponents) {
+        CoeffT term = p.coeff(exponents);
+        for(int d = 0; d < Poly::dim; d++) {
+          term *= x_exp_integral(exponents[d]);
+        }
+        dp += term;
+      });
+  return dp;
 }
 
 template <typename P1, typename P2>
@@ -46,7 +95,9 @@ P1 orthogonal_helper(const P1 &p, const P2 &next,
 template <typename P1, typename... P_Prior>
 P1 orthogonal(const P1 &p, P_Prior... prior_basis) {
   P1 projected = orthogonal_helper(p, prior_basis...);
-  return p + (-projected);
+  P1 unscaled = p + (-projected);
+  return unscaled *
+         std::sqrt(1.0 / dot_product(unscaled, unscaled));
 }
 
 int main(int argc, char **argv) {
@@ -102,17 +153,23 @@ int main(int argc, char **argv) {
 
   std::cout << "c . c : " << dot_product(constant, constant)
             << std::endl;
+  std::cout << "c . e^(x+y+z) : "
+            << exp_dot_product(constant) << std::endl;
 
   std::cout << "lx_o . c : "
             << dot_product(lx_o_c, constant) << std::endl;
   std::cout << "lx_o . lx_o : "
             << dot_product(lx_o_c, lx_o_c) << std::endl;
+  std::cout << "lx_o . e^(x+y+z) : "
+            << exp_dot_product(lx_o_c) << std::endl;
   std::cout << "ly_o . c : "
             << dot_product(ly_o_c, constant) << std::endl;
   std::cout << "ly_o . lx_o : "
             << dot_product(ly_o_c, lx_o_c) << std::endl;
   std::cout << "ly_o . ly_o : "
             << dot_product(ly_o_c, ly_o_c) << std::endl;
+  std::cout << "ly_o . e^(x+y+z) : "
+            << exp_dot_product(ly_o_c) << std::endl;
   std::cout << "lz_o . c : "
             << dot_product(lz_o_c, constant) << std::endl;
   std::cout << "lz_o . lx_o : "
@@ -121,6 +178,8 @@ int main(int argc, char **argv) {
             << dot_product(lz_o_c, ly_o_c) << std::endl;
   std::cout << "lz_o . lz_o : "
             << dot_product(lz_o_c, lz_o_c) << std::endl;
+  std::cout << "lz_o . e^(x+y+z) : "
+            << exp_dot_product(lz_o_c) << std::endl;
 
   std::cout << "qxx_o . c : "
             << dot_product(quad_o_xx, constant)
@@ -134,6 +193,8 @@ int main(int argc, char **argv) {
   std::cout << "qxx_o . qxx_o : "
             << dot_product(quad_o_xx, quad_o_xx)
             << std::endl;
+  std::cout << "qxx_o . e^(x+y+z) : "
+            << exp_dot_product(quad_o_xx) << std::endl;
 
   std::cout << "qxy_o . c : "
             << dot_product(quad_o_xy, constant)
@@ -150,6 +211,8 @@ int main(int argc, char **argv) {
   std::cout << "qxy_o . qxy_o : "
             << dot_product(quad_o_xy, quad_o_xy)
             << std::endl;
+  std::cout << "qxy_o . e^(x+y+z) : "
+            << exp_dot_product(quad_o_xy) << std::endl;
 
   std::cout << "qxz_o . c : "
             << dot_product(quad_o_xz, constant)
@@ -169,6 +232,8 @@ int main(int argc, char **argv) {
   std::cout << "qxz_o . qxz_o : "
             << dot_product(quad_o_xz, quad_o_xz)
             << std::endl;
+  std::cout << "qxz_o . e^(x+y+z) : "
+            << exp_dot_product(quad_o_xz) << std::endl;
 
   std::cout << "qyy_o . c : "
             << dot_product(quad_o_yy, constant)
@@ -191,6 +256,8 @@ int main(int argc, char **argv) {
   std::cout << "qyy_o . qyy_o : "
             << dot_product(quad_o_yy, quad_o_yy)
             << std::endl;
+  std::cout << "qyy_o . e^(x+y+z) : "
+            << exp_dot_product(quad_o_yy) << std::endl;
 
   std::cout << "qyz_o . c : "
             << dot_product(quad_o_yz, constant)
@@ -216,6 +283,8 @@ int main(int argc, char **argv) {
   std::cout << "qyz_o . qyz_o : "
             << dot_product(quad_o_yz, quad_o_yz)
             << std::endl;
+  std::cout << "qyz_o . e^(x+y+z) : "
+            << exp_dot_product(quad_o_yz) << std::endl;
 
   std::cout << "qzz_o . c : "
             << dot_product(quad_o_zz, constant)
@@ -244,6 +313,36 @@ int main(int argc, char **argv) {
   std::cout << "qzz_o . qzz_o : "
             << dot_product(quad_o_zz, quad_o_zz)
             << std::endl;
+  std::cout << "qzz_o . e^(x+y+z) : "
+            << exp_dot_product(quad_o_zz) << std::endl;
+
+  quadratic_p exp_proj =
+      exp_dot_product(constant) * constant +
+      exp_dot_product(lx_o_c) * lx_o_c +
+      exp_dot_product(ly_o_c) * ly_o_c +
+      exp_dot_product(lz_o_c) * lz_o_c +
+      exp_dot_product(quad_o_xx) * quad_o_xx +
+      exp_dot_product(quad_o_xy) * quad_o_xy +
+      exp_dot_product(quad_o_xz) * quad_o_xz +
+      exp_dot_product(quad_o_yy) * quad_o_yy +
+      exp_dot_product(quad_o_yz) * quad_o_yz +
+      exp_dot_product(quad_o_zz) * quad_o_zz;
+
+  CoeffT optimal_dp =
+      32.6001889612617945069684599145663334796335791191178;
+  std::cout << "Exponent Projection: "
+            << exp_dot_product(exp_proj) << " vs "
+            << optimal_dp << "; "
+            << exp_dot_product(exp_proj + 0.001 * lx_o_c)
+            << "; "
+            << exp_dot_product(exp_proj + -0.001 * lx_o_c)
+            << "; " << std::endl
+            << dot_product(exp_proj, exp_proj) << std::endl;
+  exp_proj.coeff_iterator(
+      [&](const Array<int, dim> &exponents) {
+        std::cout << exponents << " : "
+                  << exp_proj.coeff(exponents) << std::endl;
+      });
 
   return 0;
 }

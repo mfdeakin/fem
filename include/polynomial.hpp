@@ -2,9 +2,10 @@
 #ifndef _POLYNOMIAL_HPP_
 #define _POLYNOMIAL_HPP_
 
-#include "array.hpp"
-#include "ctmath.hpp"
-#include "tags.hpp"
+#include <array.hpp>
+#include <ctmath.hpp>
+#include <polynomial_utils.hpp>
+#include <tags.hpp>
 
 #include <iostream>
 
@@ -19,28 +20,29 @@ class Polynomial {
   static constexpr const int dim = _dim;
   static constexpr const int degree = _degree;
 
-  Polynomial() {
-    static_assert(_degree >= 0,
-                  "A polynomial's _degree (max "
-                  "exponent-min exponent) must be at least "
-                  "zero, otherwise it's degenerate");
-    static_assert(_dim >= 0,
-                  "A polynomial's _dimension must be at "
-                  "least zero, otherwise it's degenerate");
-  }
+  static_assert(_degree >= 0,
+                "A polynomial's _degree (max "
+                "exponent-min exponent) must be at least "
+                "zero, otherwise it's degenerate");
+  static_assert(_dim >= 0,
+                "A polynomial's _dimension must be at "
+                "least zero, otherwise it's degenerate");
 
-  Polynomial(const Tags::Zero_Tag &)
-      : lower_degree(Tags::Zero_Tag()),
-        coeffs(Tags::Zero_Tag()) {
-    static_assert(_degree >= 0,
-                  "A polynomial's _degree (max "
-                  "exponent-min exponent) must be at least "
-                  "zero, otherwise it's degenerate");
-    static_assert(_dim >= 0,
-                  "A polynomial's _dimension must be at "
-                  "least zero, otherwise it's degenerate");
-  }
+  Polynomial() {}
 
+  Polynomial(const Tags::Zero_Tag &&)
+      : coeffs(Tags::Zero_Tag()),
+        lower_degree(Tags::Zero_Tag()) {}
+
+  /* Takes an array of size dim as input
+   * The indices in the array correspond to the dimension
+   * The values in the array correspond to the exponent of
+   * that dimension
+   * ie. poly_dim3.coeff(4, 2, 0) returns the coefficient
+   * for the (x_1)^4 (x_2)^2 (x_3)^0 term
+   * This requires the sum of the exponents to be at most
+   * degree, and asserts in debug mode
+   */
   template <typename... int_list,
             typename std::enable_if<
                 sizeof...(int_list) == _dim, int>::type = 0>
@@ -80,18 +82,19 @@ class Polynomial {
   }
 
   Polynomial<CoeffT, _degree, _dim> operator+(
-      CoeffT val) const {
+      CoeffT val) const noexcept {
     Polynomial<CoeffT, _degree, _dim> p(*this);
     p.coeff(Array<int, _dim>((Tags::Zero_Tag()))) += val;
     return p;
   }
 
   Polynomial<CoeffT, _degree, _dim> operator-(
-      CoeffT val) const {
+      CoeffT val) const noexcept {
     return *this + (-val);
   }
 
-  Polynomial<CoeffT, _degree, _dim> operator-() const {
+  Polynomial<CoeffT, _degree, _dim> operator-() const
+      noexcept {
     Polynomial<CoeffT, _degree, _dim> p;
     p.coeff_iterator(
         [&](const Array<int, _dim> &exponents) {
@@ -101,7 +104,7 @@ class Polynomial {
   }
 
   Polynomial<CoeffT, _degree, _dim> operator*(
-      CoeffT val) const {
+      CoeffT val) const noexcept {
     Polynomial<CoeffT, _degree, _dim> p;
     coeff_iterator([&](const Array<int, _dim> &exponents) {
       p.coeff(exponents) = coeff(exponents) * val;
@@ -113,8 +116,8 @@ class Polynomial {
             typename std::enable_if<
                 (_degree > other_degree), int>::type = 0>
   Polynomial<CoeffT, _degree, _dim> operator+(
-      const Polynomial<CoeffT, other_degree, _dim> &m)
-      const {
+      const Polynomial<CoeffT, other_degree, _dim> &m) const
+      noexcept {
     return sum(m);
   }
 
@@ -122,8 +125,8 @@ class Polynomial {
             typename std::enable_if<
                 (_degree <= other_degree), int>::type = 0>
   Polynomial<CoeffT, other_degree, _dim> operator+(
-      const Polynomial<CoeffT, other_degree, _dim> &m)
-      const {
+      const Polynomial<CoeffT, other_degree, _dim> &m) const
+      noexcept {
     return sum(m);
   }
 
@@ -131,8 +134,8 @@ class Polynomial {
             typename std::enable_if<
                 (_degree >= other_degree), int>::type = 0>
   Polynomial<CoeffT, _degree, _dim> sum(
-      const Polynomial<CoeffT, other_degree, _dim> &m)
-      const {
+      const Polynomial<CoeffT, other_degree, _dim> &m) const
+      noexcept {
     Polynomial<CoeffT, _degree, _dim> s((Tags::Zero_Tag()));
     coeff_iterator([&](const Array<int, _dim> &exponents) {
       if(CTMath::sum(exponents) <= other_degree) {
@@ -149,22 +152,22 @@ class Polynomial {
             typename std::enable_if<
                 (_degree < other_degree), int>::type = 0>
   Polynomial<CoeffT, other_degree, _dim> sum(
-      const Polynomial<CoeffT, other_degree, _dim> &m)
-      const {
+      const Polynomial<CoeffT, other_degree, _dim> &m) const
+      noexcept {
     return m.sum(*this);
   }
 
   template <int other_degree>
   Polynomial<CoeffT, _degree + other_degree, _dim> operator
       *(const Polynomial<CoeffT, other_degree, _dim> &m)
-          const {
+          const noexcept {
     return product(m);
   }
 
   template <int other_degree>
   Polynomial<CoeffT, _degree + other_degree, _dim> product(
-      const Polynomial<CoeffT, other_degree, _dim> &m)
-      const {
+      const Polynomial<CoeffT, other_degree, _dim> &m) const
+      noexcept {
     using FP =
         Polynomial<CoeffT, _degree + other_degree, _dim>;
     FP prod((Tags::Zero_Tag()));
@@ -184,7 +187,7 @@ class Polynomial {
   }
 
   Polynomial<CoeffT, _degree + 1, _dim> integrate(
-      int variable, CoeffT constant = 0) const {
+      int variable, CoeffT constant = 0) const noexcept {
     Polynomial<CoeffT, _degree + 1, _dim> integral(
         (Tags::Zero_Tag()));
     coeff_iterator([&](const Array<int, _dim> &exponents) {
@@ -204,7 +207,7 @@ class Polynomial {
   }
 
   Polynomial<CoeffT, _degree - 1, _dim> differentiate(
-      int variable) const {
+      int variable) const noexcept {
     Polynomial<CoeffT, _degree - 1, _dim> derivative(
         (Tags::Zero_Tag()));
     coeff_iterator([&](const Array<int, _dim> &exponents) {
@@ -219,7 +222,8 @@ class Polynomial {
   }
 
   Polynomial<CoeffT, _degree, _dim - 1> slice(
-      const int dim, const CoeffT slice_pos) const {
+      const int dim, const CoeffT slice_pos) const
+      noexcept {
     Polynomial<CoeffT, _degree, _dim - 1> s(
         (Tags::Zero_Tag()));
     Array<CoeffT, _degree + 1> factors;
@@ -242,7 +246,7 @@ class Polynomial {
   }
 
   template <typename P_Cast>
-  P_Cast &change_degree(P_Cast &reduced) const {
+  P_Cast &change_degree(P_Cast &reduced) const noexcept {
     static_assert(
         _dim == P_Cast::dim,
         "Cannot change degree to another dimension");
@@ -257,7 +261,7 @@ class Polynomial {
   }
 
   template <typename P_Cast>
-  P_Cast &change_degree(P_Cast &&reduced) const {
+  P_Cast &change_degree(P_Cast &&reduced) const noexcept {
     static_assert(
         _dim == P_Cast::dim,
         "Cannot change degree to another dimension");
@@ -275,7 +279,7 @@ class Polynomial {
       typename... subs_list,
       typename std::enable_if<sizeof...(subs_list) == _dim,
                               int>::type = 0>
-  CoeffT eval(subs_list... vars) const {
+  CoeffT eval(subs_list... vars) const noexcept {
     Array<int, _dim> exponents;
     return eval_helper(_degree, exponents, vars...);
   }
@@ -311,7 +315,7 @@ class Polynomial {
   CoeffT eval_helper(int exp_left,
                      Array<int, _dim> &exponents,
                      CoeffT cur_var,
-                     subs_list... vars) const {
+                     subs_list... vars) const noexcept {
     constexpr const auto cur_dim =
         _dim - sizeof...(subs_list) - 1;
     CoeffT factor = 1.0;
@@ -373,7 +377,7 @@ class Polynomial {
   }
 
   static constexpr const int num_coeffs =
-      CTMath::poly_degree_num_coeffs<int>(_degree, _dim);
+      Utilities::poly_degree_num_coeffs<int>(_degree, _dim);
   Array<CoeffT, num_coeffs> coeffs;
 
   Polynomial<CoeffT, _degree - 1, _dim> lower_degree;
@@ -392,7 +396,7 @@ class Polynomial<CoeffT, 0, _dim> {
 
   Polynomial() {}
 
-  Polynomial(const Tags::Zero_Tag &) : value(0) {}
+  explicit Polynomial(const Tags::Zero_Tag &) : value(0) {}
 
   template <typename... int_list,
             typename std::enable_if<
@@ -426,8 +430,8 @@ class Polynomial<CoeffT, 0, _dim> {
             typename std::enable_if<(other_degree == 0),
                                     int>::type = 0>
   Polynomial<CoeffT, 0, _dim> sum(
-      const Polynomial<CoeffT, other_degree, _dim> &m)
-      const {
+      const Polynomial<CoeffT, other_degree, _dim> &m) const
+      noexcept {
     Polynomial<CoeffT, 0, _dim> s;
     const Array<int, _dim> zero((Tags::Zero_Tag()));
     s.coeff(zero) = coeff(zero) + s.coeff(zero);
@@ -438,8 +442,8 @@ class Polynomial<CoeffT, 0, _dim> {
             typename std::enable_if<(other_degree > 0),
                                     int>::type = 0>
   Polynomial<CoeffT, other_degree, _dim> sum(
-      const Polynomial<CoeffT, other_degree, _dim> &m)
-      const {
+      const Polynomial<CoeffT, other_degree, _dim> &m) const
+      noexcept {
     return m.sum(*this);
   }
 
@@ -447,8 +451,8 @@ class Polynomial<CoeffT, 0, _dim> {
             typename std::enable_if<(other_degree == 0),
                                     int>::type = 0>
   Polynomial<CoeffT, 0, _dim> operator+(
-      const Polynomial<CoeffT, other_degree, _dim> &m)
-      const {
+      const Polynomial<CoeffT, other_degree, _dim> &m) const
+      noexcept {
     return sum(*this);
   }
 
@@ -456,20 +460,20 @@ class Polynomial<CoeffT, 0, _dim> {
             typename std::enable_if<(other_degree > 0),
                                     int>::type = 0>
   Polynomial<CoeffT, other_degree, _dim> operator+(
-      const Polynomial<CoeffT, other_degree, _dim> &m)
-      const {
+      const Polynomial<CoeffT, other_degree, _dim> &m) const
+      noexcept {
     return m.sum(*this);
   }
 
   Polynomial<CoeffT, 0, _dim> operator+(
-      const CoeffT &c) const {
+      const CoeffT &c) const noexcept {
     Polynomial<CoeffT, 0, _dim> ret(*this);
     ret.coeff(Array<int, _dim>((Tags::Zero_Tag()))) += c;
     return ret;
   }
 
   Polynomial<CoeffT, 0, _dim> operator*(
-      const CoeffT s) const {
+      const CoeffT s) const noexcept {
     Polynomial<CoeffT, 0, _dim> p;
     const Array<int, _dim> zeros((Tags::Zero_Tag()));
     p.coeff(zeros) = coeff(zeros) * s;
@@ -478,26 +482,27 @@ class Polynomial<CoeffT, 0, _dim> {
 
   template <int other_degree>
   Polynomial<CoeffT, other_degree, _dim> operator*(
-      const Polynomial<CoeffT, other_degree, _dim> &m)
-      const {
+      const Polynomial<CoeffT, other_degree, _dim> &m) const
+      noexcept {
     return product(m);
   }
 
   template <int other_degree>
   Polynomial<CoeffT, other_degree, _dim> product(
-      const Polynomial<CoeffT, other_degree, _dim> &m)
-      const {
+      const Polynomial<CoeffT, other_degree, _dim> &m) const
+      noexcept {
     const Array<int, _dim> zero((Tags::Zero_Tag()));
     Polynomial<CoeffT, other_degree, _dim> p(
         (Tags::Zero_Tag()));
-    p.coeff_iterator([&](
-        const Array<int, _dim> &exponents) {
-      p.coeff(exponents) = coeff(zero) * m.coeff(exponents);
-    });
+    p.coeff_iterator(
+        [&](const Array<int, _dim> &exponents) {
+          p.coeff(exponents) =
+              coeff(zero) * m.coeff(exponents);
+        });
     return p;
   }
 
-  Polynomial<CoeffT, 0, _dim> operator-() const {
+  Polynomial<CoeffT, 0, _dim> operator-() const noexcept {
     Polynomial<CoeffT, 0, _dim> p;
     const Array<int, _dim> zeros((Tags::Zero_Tag()));
     p.coeff(zeros) = -coeff(zeros);
@@ -505,7 +510,8 @@ class Polynomial<CoeffT, 0, _dim> {
   }
 
   Polynomial<CoeffT, 1, _dim> integrate(
-      int variable, const CoeffT &constant = 0) const {
+      int variable, const CoeffT &constant = 0) const
+      noexcept {
     Polynomial<CoeffT, 1, _dim> p((Tags::Zero_Tag()));
     Array<int, _dim> exp_spec((Tags::Zero_Tag()));
     p.coeff(exp_spec) = constant;
@@ -516,13 +522,13 @@ class Polynomial<CoeffT, 0, _dim> {
   }
 
   Polynomial<CoeffT, 0, _dim> differentiate(
-      int variable) const {
+      int variable) const noexcept {
     Polynomial<CoeffT, 0, _dim> p((Tags::Zero_Tag()));
     return p;
   }
 
   template <typename P_Cast>
-  P_Cast &change_degree(P_Cast &reduced) const {
+  P_Cast &change_degree(P_Cast &reduced) const noexcept {
     static_assert(
         _dim == P_Cast::dim,
         "Cannot change degree to different dimension");
@@ -532,7 +538,7 @@ class Polynomial<CoeffT, 0, _dim> {
   }
 
   template <typename P_Cast>
-  P_Cast &change_degree(P_Cast &&reduced) const {
+  P_Cast &change_degree(P_Cast &&reduced) const noexcept {
     static_assert(
         _dim == P_Cast::dim,
         "Cannot change degree to different dimension");
@@ -611,7 +617,8 @@ class Polynomial<CoeffT, _degree, 0> {
     return value;
   }
 
-  Polynomial<CoeffT, _degree, 0> operator-() const {
+  Polynomial<CoeffT, _degree, 0> operator-() const
+      noexcept {
     Polynomial<CoeffT, _degree, 0> p;
     const Array<int, 0> zeros((Tags::Zero_Tag()));
     p.coeff(zeros) = -coeff(zeros);
@@ -643,23 +650,23 @@ class Polynomial<CoeffT, _degree, 0> {
 template <typename CoeffT, int _degree, int _dim>
 Polynomial<CoeffT, _degree, _dim> operator+(
     const CoeffT scalar,
-    const Polynomial<CoeffT, _degree, _dim> &p) {
+    const Polynomial<CoeffT, _degree, _dim> &p) noexcept {
   return p + scalar;
 }
 
 template <typename CoeffT, int _degree, int _dim>
 Polynomial<CoeffT, _degree, _dim> operator-(
     const CoeffT scalar,
-    const Polynomial<CoeffT, _degree, _dim> &p) {
+    const Polynomial<CoeffT, _degree, _dim> &p) noexcept {
   return p + -scalar;
 }
 
 template <typename CoeffT, int _degree, int _dim>
 Polynomial<CoeffT, _degree, _dim> operator*(
     const CoeffT scalar,
-    const Polynomial<CoeffT, _degree, _dim> &p) {
+    const Polynomial<CoeffT, _degree, _dim> &p) noexcept {
   return p * scalar;
 }
-}
+}  // namespace Numerical
 
 #endif  //_POLYNOMIAL_HPP_

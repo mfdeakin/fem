@@ -8,10 +8,102 @@
 #include <ctmath.hpp>
 #include <polynomial.hpp>
 
+#include <typeinfo>
+
+#include <cxxabi.h>
+
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
 using namespace Numerical;
+
+TEST_CASE("Compute Unit Basis", "[Polynomial]") {
+  using CoeffT = double;
+  constexpr const int dim = 2;
+  constexpr const int max_degree = 3;
+  static_assert(
+      std::is_same<typename Utilities::basis_tuple<
+                       CoeffT, 0, dim>::tuple_type,
+                   std::tuple<Polynomial<double, 0,
+                                         dim> > >::value ==
+          true,
+      "Basis tuple has the wrong type.");
+
+  static_assert(
+      std::is_same<typename Utilities::basis_tuple<
+                       CoeffT, 1, dim>::tuple_type,
+                   std::tuple<Polynomial<double, 0, dim>,
+                              Polynomial<double, 1, dim>,
+                              Polynomial<double, 1,
+                                         dim> > >::value ==
+          true,
+      "Basis tuple has the wrong type.");
+
+  static_assert(
+      std::is_same<typename Utilities::basis_tuple<
+                       CoeffT, 2, dim>::tuple_type,
+                   std::tuple<Polynomial<double, 0, dim>,
+                              Polynomial<double, 1, dim>,
+                              Polynomial<double, 1, dim>,
+                              Polynomial<double, 2, dim>,
+                              Polynomial<double, 2, dim>,
+                              Polynomial<double, 2,
+                                         dim> > >::value ==
+          true,
+      "Basis tuple has the wrong type.");
+
+  using tuple_t =
+      typename Utilities::basis_tuple<CoeffT, max_degree,
+                                      dim>::tuple_type;
+  tuple_t basis;
+
+  const Polynomial<double, 0, dim> &const_b =
+      std::get<0>(basis);
+  const Polynomial<double, 1, dim> &lin_b1 =
+      std::get<1>(basis);
+  const Polynomial<double, 1, dim> &lin_b2 =
+      std::get<2>(basis);
+  const Polynomial<double, 2, dim> &quad_b1 =
+      std::get<3>(basis);
+  const Polynomial<double, 2, dim> &quad_b2 =
+      std::get<4>(basis);
+  const Polynomial<double, 2, dim> &quad_b3 =
+      std::get<5>(basis);
+
+  auto exp = Array<int, dim>(Tags::Zero_Tag());
+  Utilities::BasisGenerators<CoeffT, max_degree,
+                             dim>::unit_basis(basis, exp);
+  REQUIRE(const_b.coeff(0, 0) == 1.0);
+
+  REQUIRE(lin_b1.coeff(0, 0) == 0.0);
+  REQUIRE(lin_b1.coeff(1, 0) == 1.0);
+  REQUIRE(lin_b1.coeff(0, 1) == 0.0);
+
+  REQUIRE(lin_b2.coeff(0, 0) == 0.0);
+  REQUIRE(lin_b2.coeff(1, 0) == 0.0);
+  REQUIRE(lin_b2.coeff(0, 1) == 1.0);
+
+  REQUIRE(quad_b1.coeff(0, 0) == 0.0);
+  REQUIRE(quad_b1.coeff(1, 0) == 0.0);
+  REQUIRE(quad_b1.coeff(0, 1) == 0.0);
+  REQUIRE(quad_b1.coeff(2, 0) == 1.0);
+  REQUIRE(quad_b1.coeff(1, 1) == 0.0);
+  REQUIRE(quad_b1.coeff(0, 2) == 0.0);
+
+  REQUIRE(quad_b2.coeff(0, 0) == 0.0);
+  REQUIRE(quad_b2.coeff(1, 0) == 0.0);
+  REQUIRE(quad_b2.coeff(0, 1) == 0.0);
+  REQUIRE(quad_b2.coeff(2, 0) == 0.0);
+  REQUIRE(quad_b2.coeff(1, 1) == 1.0);
+  REQUIRE(quad_b2.coeff(0, 2) == 0.0);
+
+  REQUIRE(quad_b3.coeff(0, 0) == 0.0);
+  REQUIRE(quad_b3.coeff(1, 0) == 0.0);
+  REQUIRE(quad_b3.coeff(0, 1) == 0.0);
+  REQUIRE(quad_b3.coeff(2, 0) == 0.0);
+  REQUIRE(quad_b3.coeff(1, 1) == 0.0);
+  REQUIRE(quad_b3.coeff(0, 2) == 1.0);
+}
 
 TEST_CASE("Change Polynomial Degree", "[Polynomial]") {
   constexpr const int dim = 3;
@@ -152,6 +244,59 @@ TEST_CASE("Polynomial Slice", "[Polynomial]") {
 }
 
 TEST_CASE("Polynomial Integral", "[Polynomial]") {
+  constexpr const int dim = 3;
+  constexpr const int degree_range_1 = 2;
+  constexpr const int degree_range_2 = degree_range_1 + 1;
+  using CoeffT = double;
+  using P = Polynomial<CoeffT, degree_range_1, dim>;
+  using I = Polynomial<CoeffT, degree_range_2, dim>;
+
+  P x;
+  x.coeff(0, 0, 0) = 2.0;
+
+  x.coeff(0, 0, 1) = 3.0;
+  x.coeff(0, 1, 0) = 5.0;
+  x.coeff(1, 0, 0) = 7.0;
+
+  x.coeff(0, 0, 2) = 1.0;
+  x.coeff(0, 1, 1) = 0.0;
+  x.coeff(0, 2, 0) = 1.0;
+  x.coeff(1, 0, 1) = 0.0;
+  x.coeff(1, 1, 0) = 0.0;
+  x.coeff(2, 0, 0) = 1.0;
+
+  SECTION("x0") {
+    I y = x.integrate(0);
+
+    REQUIRE(y.coeff(1, 0, 0) == x.coeff(0, 0, 0));
+
+    REQUIRE(y.coeff(1, 0, 1) == x.coeff(0, 0, 1));
+    REQUIRE(y.coeff(1, 1, 0) == x.coeff(0, 1, 0));
+    REQUIRE(2.0 * y.coeff(2, 0, 0) == x.coeff(1, 0, 0));
+  }
+
+  SECTION("x1") {
+    I y = x.integrate(1);
+
+    REQUIRE(y.coeff(0, 1, 0) == x.coeff(0, 0, 0));
+
+    REQUIRE(y.coeff(0, 1, 1) == x.coeff(0, 0, 1));
+    REQUIRE(2.0 * y.coeff(0, 2, 0) == x.coeff(0, 1, 0));
+    REQUIRE(y.coeff(1, 1, 0) == x.coeff(1, 0, 0));
+  }
+
+  SECTION("x2") {
+    I y = x.integrate(2);
+
+    REQUIRE(y.coeff(0, 0, 1) == x.coeff(0, 0, 0));
+
+    REQUIRE(2.0 * y.coeff(0, 0, 2) == x.coeff(0, 0, 1));
+    REQUIRE(y.coeff(0, 1, 1) == x.coeff(0, 1, 0));
+    REQUIRE(y.coeff(1, 0, 1) == x.coeff(1, 0, 0));
+  }
+}
+
+TEST_CASE("Polynomial Derivative", "[Polynomial]") {
   constexpr const int dim = 3;
   constexpr const int degree_range_1 = 2;
   constexpr const int degree_range_2 = degree_range_1 - 1;
@@ -425,8 +570,8 @@ TEST_CASE("Coefficient Indices", "[Polynomial]") {
     constexpr const int dim = 2;
     using P = Polynomial<CoeffT, degree_range, dim>;
     using A = Array<int, dim>;
-    Array<CoeffT,
-          CTMath::poly_num_coeffs<int>(degree_range, dim)>
+    Array<CoeffT, Utilities::poly_num_coeffs<int>(
+                      degree_range, dim)>
         coeffs;
     P p;
     for(int i = 0; i < num_rand_tests; ++i) {
@@ -467,8 +612,8 @@ TEST_CASE("Coefficient Indices", "[Polynomial]") {
     constexpr const int dim = 3;
     using P = Polynomial<CoeffT, degree_range, dim>;
     using A = Array<int, dim>;
-    Array<CoeffT,
-          CTMath::poly_num_coeffs<int>(degree_range, dim)>
+    Array<CoeffT, Utilities::poly_num_coeffs<int>(
+                      degree_range, dim)>
         coeffs;
     P p;
     for(int i = 0; i < num_rand_tests; ++i) {
